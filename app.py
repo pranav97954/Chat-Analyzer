@@ -2,9 +2,17 @@ import streamlit as st
 import preprocessor,helper
 import matplotlib.pyplot as plt
 import seaborn as sns
+from textblob import TextBlob
 
+def categorize_sentiment(score):
+    if score > 0:
+        return 'Positive'
+    elif score == 0:
+        return 'Neutral'
+    else:
+        return 'Negative'
 
-st.sidebar.title("Universal chat analyzer")
+st.sidebar.title("Whatsapp Chat Analyzer")
 
 uploaded_file = st.sidebar.file_uploader("Choose a file")
 if uploaded_file is not None:
@@ -139,3 +147,30 @@ if uploaded_file is not None:
             ax.pie(emoji_df[1],labels=emoji_df[0], autopct='%1.1f%%', startangle=90)
             ax.axis('equal')
             st.pyplot(fig)
+
+        # Sentiment Analysis Section
+        st.title("Sentiment Analysis")
+        df['sentiment'] = df['message'].apply(lambda message: TextBlob(message).sentiment.polarity)
+        df['sentiment_label'] = df['sentiment'].apply(categorize_sentiment)
+        df = df[df['user'] != 'group_notification']  # Exclude group_notification user from sentiment analysis
+
+        st.write("Overall Sentiment Distribution:")
+        sns.set(style="ticks")
+        plt.figure(figsize=(8, 6))
+        sns.countplot(x='sentiment_label', data=df, palette="Set2")
+        plt.xlabel("Sentiment")
+        plt.ylabel("Count")
+        plt.title("Sentiment Analysis")
+        st.pyplot(plt)
+
+        st.write("Sentiment Analysis by User:")
+        user_sentiment = df.groupby('user')['sentiment'].mean().reset_index()
+        st.bar_chart(user_sentiment.set_index('user'))
+
+        # Sentiment Trends
+        st.title("Sentiment Trends")
+        sentiment_trends = df.groupby(df['only_date'])['sentiment'].mean()
+        fig, ax = plt.subplots()
+        ax.plot(sentiment_trends.index, sentiment_trends.values, color='blue')
+        plt.xticks(rotation='vertical')
+        st.pyplot(fig)
